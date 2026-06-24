@@ -28,11 +28,17 @@ def timeline(user: SocialNetworkUsers, start: int = 0, end: int = None, publishe
         # 3. the post contains the community’s expertise area
         # 4. the post is published or the user is the author
 
-        pass
-        #########################
-        # add your code here
-        #########################
-
+        # Get all communities this user is a member of
+       user_communities = user.communities.all()
+       
+       posts = Posts.objects.filter(
+            #  published or own post
+            Q(published=True) | Q(author=user),
+            #  post is tagged with an expertise area the user is in
+            expertise_area_and_truth_ratings__in=user_communities,
+            #  the author is also a member of that same community
+            author__communities__in=user_communities,
+        ).distinct().order_by("-submitted")  # distinct - bcz a post can be tagged with multiple expertise areas.
     else:
         # in standard mode, posts of followed users are displayed
         _follows = user.follows.all()
@@ -126,10 +132,25 @@ def submit_post(
 
     redirect_to_logout = False
 
+    # auto-remove user from community if fame drops below Super Pro
+    # Check each expertise area of this post
+    for epa in _expertise_areas:
+        expertise_area = epa["expertise_area"]
+        if expertise_area is None:
+           continue
 
-    #########################
-    # add your code here
-    #########################
+        # Check if user is in this community
+        if expertise_area in user.communities.all():
+        # Get the user's current fame in this expertise area
+            try:
+               fame_entry = Fame.objects.get(user=user, expertise_area=expertise_area)
+               super_pro_level = FameLevels.objects.get(name="Super Pro")
+               # If fame dropped below Super Pro, remove from community
+               if fame_entry.fame_level.numeric_value < super_pro_level.numeric_value:
+                leave_community(user, expertise_area)
+            except Fame.DoesNotExist:
+               # No fame entry means they shouldn't be in the community anyways
+               leave_community(user, expertise_area)
 
     post.save()
 
@@ -188,11 +209,41 @@ def bullshitters():
     users with the lowest fame are shown first, in case there is a tie, within that tie sort by date_joined
     (most recent first). Note that expertise areas with no expert may be omitted.
     """
-    pass
-    #########################
-    # add your code here
-    #########################
+    # Get all Fame rows where the fame level is negative
+    # filter on the related FameLevels model using __ (double underscore)
+    negative_fame_entries = Fame.objects.filter(
+        fame_level__numeric_value__lt=0
+    ).select_related(
+        # select_related: JOIN these tables in one SQL query
+        "user",               
+        "expertise_area",     
+        "fame_level",         
+    ).order_by(
+        "fame_level__numeric_value",   # lowest fame first 
+        "-user__date_joined",          # most recently joined first (- means Descending)
+    )
 
+    # Build the result dictionary
+    result = {}
+
+    for entry in negative_fame_entries:
+        # entry.expertise_area.label (e.g. Computer Science)
+        # entry.user                 (the FameUser object)
+        # entry.fame_level.numeric_value  (-300)
+
+        area_label = entry.expertise_area.label
+
+        # If this expertise area isn't in the dict yet, create an empty list for it
+        if area_label not in result:
+            result[area_label] = []
+
+        # Append this user's entry to that area's list
+        result[area_label].append({
+            "user": entry.user,
+            "fame_level_numeric": entry.fame_level.numeric_value,
+        })
+
+    return result
 
 
 
@@ -201,20 +252,15 @@ def join_community(user: SocialNetworkUsers, community: ExpertiseAreas):
     """Join a specified community. Note that this method does not check whether the user is eligible for joining the
     community.
     """
-    pass
-    #########################
-    # add your code here
-    #########################
-
+    user.communities.add(community)
+    user.save()
 
 
 def leave_community(user: SocialNetworkUsers, community: ExpertiseAreas):
     """Leave a specified community."""
-    pass
-    #########################
-    # add your code here
-    #########################
-
+    
+    user.communities.remove(community)
+    user.save()
 
 
 def similar_users(user: SocialNetworkUsers):

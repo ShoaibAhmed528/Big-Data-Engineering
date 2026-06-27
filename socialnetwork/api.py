@@ -267,3 +267,38 @@ def similar_users(user: SocialNetworkUsers):
     """Compute the similarity of user with all other users. The method returns a QuerySet of FameUsers annotated
     with an additional field 'similarity'. Sort the result in descending order according to 'similarity', in case
     there is a tie, within that tie sort by date_joined (most recent first)"""
+ 
+    UserModel = user.__class__
+    
+    # 1. Get the target user's expertise areas and fame values.
+    # select_related fetches the fame_level in the same query (prevents slow N+1 queries).
+    target_fames = {
+        f.expertise_area_id: f.fame_level.numeric_value 
+        for f in Fame.objects.filter(user=user).select_related('fame_level')
+    }
+    
+    if not target_fames:
+        return UserModel.objects.none()
+        
+    # 2. Build the matching rules: Area matches AND fame is within +/- 100
+    conditions = Q()
+    for area_id, val in target_fames.items():
+        conditions |= Q(
+            fame__expertise_area_id=area_id, 
+            fame__fame_level__numeric_value__range=(val - 100, val + 100)
+        )
+        
+    # 3. Find similar users and calculate similarity
+    n_areas = len(target_fames)
+    
+    return UserModel.objects.exclude(pk=user.pk).annotate(
+        # Count matching fame records based on our conditions
+        matching=Count('fame', filter=conditions, distinct=True)
+    ).annotate(
+        # Multiply by 1.0 forces float division (no Cast needed!)
+        similarity=F('matching') * 1.0 / n_areas
+    ).filter(
+        similarity__gt=0
+    ).order_by(
+        '-similarity', '-date_joined'
+    )

@@ -6,7 +6,6 @@
 
 {% block body %}
 
-
     <h1>Available URIs</h1>
 
     <h2>Fame App</h2>
@@ -58,7 +57,9 @@
         <li>
             <a href="/sn/html/timeline?search=around">Search (with keyword "around")</a>
         </li>
+        <li>
+            <a href="{% url 'sn:similar_users' %}">Similar Users</a>
+        </li>
     </ul>
-
 
 {% endblock %}

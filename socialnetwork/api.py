@@ -132,6 +132,48 @@ def submit_post(
 
     redirect_to_logout = False
 
+    # T1
+    for epa in _expertise_areas:
+        has_negative_fame = Fame.objects.filter(
+            user=user,
+            expertise_area=epa["expertise_area"],
+            fame_level__numeric_value__lt=0,
+        ).exists()
+
+        if has_negative_fame:
+            post.published = False
+            break
+
+    # T2
+    confuser_level = FameLevels.objects.get(name="Confuser")
+
+    for epa in _expertise_areas:
+        truth_rating = epa["truth_rating"]
+        expertise_area = epa["expertise_area"]
+
+        if truth_rating is None or truth_rating.numeric_value >= 0:
+            continue
+
+        try:
+            fame_entry = Fame.objects.get(user=user, expertise_area=expertise_area)
+            try:
+                fame_entry.fame_level = fame_entry.fame_level.get_next_lower_fame_level()
+                fame_entry.save()
+            except ValueError:
+                user.is_active = False
+                user.save()
+                Posts.objects.filter(author=user).update(published=False)
+                post.published = False
+                redirect_to_logout = True
+
+        except Fame.DoesNotExist:
+            Fame.objects.create(
+                user=user,
+                expertise_area=expertise_area,
+                fame_level=confuser_level,
+            )
+
+    post.save()
     # auto-remove user from community if fame drops below Super Pro
     # Check each expertise area of this post
     for epa in _expertise_areas:

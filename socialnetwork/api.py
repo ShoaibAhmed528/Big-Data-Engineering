@@ -29,16 +29,17 @@ def timeline(user: SocialNetworkUsers, start: int = 0, end: int = None, publishe
         # 4. the post is published or the user is the author
 
         # Get all communities this user is a member of
-       user_communities = user.communities.all()
+        user_communities = user.communities.all()
        
-       posts = Posts.objects.filter(
-            #  published or own post
-            Q(published=True) | Q(author=user),
-            #  post is tagged with an expertise area the user is in
-            expertise_area_and_truth_ratings__in=user_communities,
-            #  the author is also a member of that same community
-            author__communities__in=user_communities,
-        ).distinct().order_by("-submitted")  # distinct - bcz a post can be tagged with multiple expertise areas.
+        posts = Posts.objects.none()
+
+        for community in user_communities:
+            posts = posts | Posts.objects.filter(Q(published=True) | Q(author=user),
+                expertise_area_and_truth_ratings = community, #  post is tagged with an expertise area the user is in
+                author__communities = community)#  the author is also a member of that same community
+            
+        posts = posts.distinct().order_by("-submitted") # distinct - bcz a post can be tagged with multiple expertise areas.
+
     else:
         # in standard mode, posts of followed users are displayed
         _follows = user.follows.all()
@@ -185,11 +186,11 @@ def submit_post(
         if expertise_area in user.communities.all():
         # Get the user's current fame in this expertise area
             try:
-               fame_entry = Fame.objects.get(user=user, expertise_area=expertise_area)
-               super_pro_level = FameLevels.objects.get(name="Super Pro")
-               # If fame dropped below Super Pro, remove from community
-               if fame_entry.fame_level.numeric_value < super_pro_level.numeric_value:
-                leave_community(user, expertise_area)
+                fame_entry = Fame.objects.get(user=user, expertise_area=expertise_area)
+                super_pro_level = FameLevels.objects.get(name="Super Pro")
+                # If fame dropped below Super Pro, remove from community
+                if fame_entry.fame_level.numeric_value < super_pro_level.numeric_value:
+                    leave_community(user, expertise_area)
             except Fame.DoesNotExist:
                # No fame entry means they shouldn't be in the community anyways
                leave_community(user, expertise_area)
@@ -273,7 +274,7 @@ def bullshitters():
         # entry.user                 (the FameUser object)
         # entry.fame_level.numeric_value  (-300)
 
-        area_label = entry.expertise_area.label
+        area_label = entry.expertise_area
 
         # If this expertise area isn't in the dict yet, create an empty list for it
         if area_label not in result:

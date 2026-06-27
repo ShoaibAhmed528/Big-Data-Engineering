@@ -7,7 +7,8 @@ from socialnetwork import api
 from socialnetwork.api import _get_social_network_user
 from socialnetwork.models import SocialNetworkUsers
 from socialnetwork.serializers import PostsSerializer
-
+from fame.models import ExpertiseAreas
+from fame.models import FameLevels
 
 @require_http_methods(["GET"])
 @login_required
@@ -36,18 +37,26 @@ def timeline(request):
             "followers": list(api.follows(_get_social_network_user(request.user)).values_list('id', flat=True)),
         }
     else:  # otherwise, use timeline method of API:
+        user = _get_social_network_user(request.user)
+
+        super_pro = FameLevels.objects.get(name="Super Pro")
+        eligible_communities = ExpertiseAreas.objects.filter(
+            fame__user=user,
+            fame__fame_level__numeric_value__gte=super_pro.numeric_value,
+        ).exclude(community_members=user)
 
         context = {
             "posts": PostsSerializer(
-                api.timeline(
-                    _get_social_network_user(request.user),
-                    published=published,
-                ),
-                many=True,
+                api.timeline(user, published=published,
+                    community_mode=request.session.get('community_mode', False),
+                ), many=True,
             ).data,
             "searchkeyword": "",
             "error": error,
-            "followers": list(api.follows(_get_social_network_user(request.user)).values_list('id', flat=True)),
+            "followers": list(api.follows(user).values_list('id', flat=True)),
+            "user_communities": user.communities.all(),
+            "eligible_communities": eligible_communities,
+            "community_mode": request.session.get('community_mode', False),
         }
 
     return render(request, "timeline.html", context=context)
@@ -74,22 +83,34 @@ def unfollow(request):
 @require_http_methods(["GET"])
 @login_required
 def bullshitters(request):
-    raise NotImplementedError("Not implemented yet")
+    context = {
+        "bullshitters" : api.bullshitters(),
+    }
+    return render (request, "bullshitters.html", context)
+
 
 @require_http_methods(["POST"])
 @login_required
 def toggle_community_mode(request):
-    raise NotImplementedError("Not implemented yet")
+    request.session['community_mode'] = not request.session.get('community_mode', False)
+    return redirect(reverse("sn:timeline"))
 
 @require_http_methods(["POST"])
 @login_required
 def join_community(request):
-    raise NotImplementedError("Not implemented yet")
+    user = _get_social_network_user(request.user)
+    community_to_join = ExpertiseAreas.objects.get(id=request.POST.get("community_id"))
+    api.join_community(user, community_to_join)
+    return redirect(reverse("sn:timeline"))
+
 
 @require_http_methods(["POST"])
 @login_required
 def leave_community(request):
-    raise NotImplementedError("Not implemented yet")
+    user = _get_social_network_user(request.user)
+    community_to_leave = ExpertiseAreas.objects.get(id=request.POST.get("community_id"))
+    api.leave_community(user, community_to_leave)
+    return redirect(reverse("sn:timeline"))
 
 @require_http_methods(["GET"])
 @login_required

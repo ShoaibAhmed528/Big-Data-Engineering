@@ -25,7 +25,44 @@
             <button type="submit" class="btn btn-secondary">Post</button>
         </form>
     </div>
-    <br>
+
+    <div style="margin-left: 40px; margin-bottom: 20px;">
+        <form action="/sn/api/toggle_community_mode" method="post">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-secondary">
+                {% if community_mode %}Switch to Standard Mode{% else %}Switch to Community Mode{% endif %}
+            </button>
+        </form>
+    </div>
+
+    <h4 style="margin-left: 40px">Your Communities</h4>
+    {% for community in user_communities %}
+        <div style="margin-left: 40px; margin-bottom: 10px;">
+            <form action="/sn/api/leave_community" method="post">
+                {% csrf_token %}
+                <input type="hidden" name="community_id" value="{{ community.id }}">
+                {{ community.label }}
+                <button type="submit" class="btn btn-secondary">Leave</button>
+            </form>
+        </div>
+    {% empty %}
+        <p style="margin-left: 40px">You are not a member of any communities.</p>
+    {% endfor %}
+
+    <h4 style="margin-left: 40px">Communities You Can Join</h4>
+    {% for community in eligible_communities %}
+        <div style="margin-left: 40px; margin-bottom: 10px;">
+            <form action="/sn/api/join_community" method="post">
+                {% csrf_token %}
+                <input type="hidden" name="community_id" value="{{ community.id }}">
+                {{ community.label }}
+                <button type="submit" class="btn btn-secondary">Join</button>
+            </form>
+        </div>
+    {% empty %}
+        <p style="margin-left: 40px">No communities available to join.</p>
+    {% endfor %}
+
     <br>
     <h3 style="margin-left: 40px">Timeline</h3>
     {% for post in posts %}

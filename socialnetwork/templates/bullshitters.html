@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% load static %}
+
+{% block title %}Bullshitters{% endblock %}
+
+{% block body %}
+
+    <h3 style="margin-left: 40px">Bullshitters by Expertise Area</h3>
+
+    {% for area, users in bullshitters.items %}
+
+        <h4 style="margin-left: 40px">{{ area }}</h4>
+
+        {% for entry in users %}
+            <div class="card" style="margin-bottom: 20px; margin-left: 40px; margin-right: 40px; background-color: mistyrose;">
+                <div class="flex-container">
+                    <b>{{ entry.user.name }}</b>&nbsp;
+                    <span style="color:gray">{{ entry.user.email }}</span>&nbsp;&nbsp;
+                    <span style="color:red">Fame: {{ entry.fame_level_numeric }}</span>
+                </div>
+            </div>
+        {% endfor %}
+
+    {% empty %}
+        <p style="margin-left: 40px">No bullshitters found.</p>
+
+    {% endfor %}
+
+    <br><br>
+
+{% endblock %}

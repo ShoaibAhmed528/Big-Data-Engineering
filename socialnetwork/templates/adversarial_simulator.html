@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div style="max-width: 700px; margin: 40px auto; padding: 0 20px; font-family: sans-serif;">
+
+    <h2>Adversarial ML Evasion Simulator</h2>
+    <p>Test if the spam and malware filter can be bypassed by text mutations.</p>
+    <p>Thresholds: Bullshit &gt;50% | Unknown 40-50% | True &lt;40%</p>
+
+    <form method="POST">
+        {% csrf_token %}
+        <label for="payload_text">Enter payload:</label><br>
+        <textarea id="payload_text" name="payload_text" rows="3" cols="60" required>{{ original_text }}</textarea><br><br>
+        <button type="submit">Launch Attack</button>
+    </form>
+
+    {% if has_results %}
+    <hr>
+
+    <h3>Original</h3>
+    <p>"{{ original_text }}"</p>
+    <p>{{ original_score }}% malicious —
+        {% if original_score > 50 %}BULLSHIT
+        {% elif original_score < 40 %}TRUE
+        {% else %}UNKNOWN{% endif %}
+    </p>
+
+    <h3>Evaded</h3>
+    <p style="white-space: pre-wrap;">"{{ evaded_text }}"</p>
+    <p>{{ evaded_score }}% malicious —
+        {% if evaded_score > 50 %}BULLSHIT
+        {% elif evaded_score < 40 %}TRUE
+        {% else %}UNKNOWN{% endif %}
+    </p>
+
+    <hr>
+
+    <h3>Result</h3>
+    <p>Confidence dropped by {{ score_drop }}%.</p>
+    <p>
+        {% if original_score > 50 and evaded_score <= 50 %}
+            Evasion Successful. The payload bypassed the filter.
+        {% else %}
+            Evasion Failed. The payload stayed above the 50% threshold.
+        {% endif %}
+    </p>
+
+    {% endif %}
+</div>
+{% endblock %}

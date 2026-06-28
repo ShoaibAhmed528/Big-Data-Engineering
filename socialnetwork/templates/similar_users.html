@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Social Network Users</title>
+</head>
+<body>
+    <h1>The list of Similar Users</h1>
+    <ul>
+        {% for user in users %}
+            <li>
+                {{ user.first_name }} {{ user.last_name }} ({{ user.email }})
+                <strong>Similarity: {{ user.similarity }}</strong>
+            </li>
+        {% empty %}
+            <li>No similar users found.</li>
+        {% endfor %}
+    </ul>
+</body>
+</html>

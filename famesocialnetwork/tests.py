@@ -551,5 +551,6 @@ class StudentTasksTests(TestCase):
         true_user_ids = [19, 16, 20, 15, 10, 1, 13, 12, 11, 7, 4, 3, 17, 14, 9, 8, 5, 18, 6, 2]
         true_similarities = [0.6875, 0.6875, 0.625, 0.625, 0.5625, 0.5625, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.4375,
                              0.4375, 0.4375, 0.4375, 0.4375, 0.375, 0.375, 0.3125]
+        
         self.assertTrue(user_ids == true_user_ids)
         self.assertTrue(similarities == true_similarities)

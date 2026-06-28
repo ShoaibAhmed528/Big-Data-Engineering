@@ -1,44 +1,51 @@
 import random as rnd
-import hashlib
 
 from fame.models import ExpertiseAreas
-# Import the centralized truth evaluator instead of the raw probability
-from socialnetwork.ml_engine import evaluate_text_truthfulness
+import hashlib
 
 rnd.seed(42)
 
+
 def classify_into_expertise_areas_and_check_for_bullshit(content: str):
-    """
-    Classify the given content into expertise areas and check for bullshit.
-    """
-    # 1. Keep the deterministic seed for EXPERTISE AREAS 
+    """Classify the given content into expertise areas."""
+
+    # in the absence of a real text classifier, we just randomly assign expertise areas and truth ratings:
+    # the random engine is initialized with a hash of the content to make the results deterministic for testing purposes
+
+    # it is important to note that this is not how a real classifier would work! This is just a mockup!
+
+    # Also note that we simulate a real classifier in the sense that sometimes we only return the expertise areas
+    # without any truth ratings. This is to simulate the fact that a real classifier might not be able to classify
+    # the content into truth ratings.
+
+    # also note that in a real system, this could be improved by integrating human moderation and feedback loops
+
+    # compute a seed based on the content:
     seed = int(hashlib.md5(content.encode()).hexdigest(), 16)
+
+    # get a local random engine to make the results deterministic for testing purposes:
     lre = rnd.Random(seed)
-    
-    expertise_areas = lre.sample(list(ExpertiseAreas.objects.all()), 2)
 
-    # 2. Use our ML algorithm decision
-    verdict = evaluate_text_truthfulness(content)
+    def get_truth_ratings(is_positive: bool):
+        from socialnetwork.models import TruthRatings
 
-    from socialnetwork.models import TruthRatings
-    
-    # Map the categorical verdict to the project's TruthRatings database objects
-    if verdict == "BULLSHIT":
-        negative_ratings = TruthRatings.objects.filter(numeric_value__lt=0)
-        truth_rating = lre.choice(negative_ratings) if negative_ratings.exists() else None
-        
-    elif verdict == "TRUE":
-        positive_ratings = TruthRatings.objects.filter(numeric_value__gt=0)
-        truth_rating = lre.choice(positive_ratings) if positive_ratings.exists() else None
-        
-    else: # verdict == "UNKNOWN"
-        truth_rating = None
+        if is_positive:
+            return lre.choice(TruthRatings.objects.filter(numeric_value__gt=0))
+        else:  # is negative
+            return lre.choice(TruthRatings.objects.filter(numeric_value__lt=0))
 
-    # 3. Return the combined result
     return [
         {
             "expertise_area": s,
-            "truth_rating": truth_rating,
+            "truth_rating": (
+                None
+                if lre.random() < 0.2
+                else (  # sometimes the AI cannot determine the truth rating
+                    get_truth_ratings(True)
+                    if lre.random() < 0.8
+                    else get_truth_ratings(False)
+                )
+            ),
         }
-        for s in expertise_areas
+        for s in lre.sample(list(ExpertiseAreas.objects.all()), 2)
     ]

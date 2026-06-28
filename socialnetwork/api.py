@@ -135,6 +135,8 @@ def submit_post(
 
     # T1
     for epa in _expertise_areas:
+        if epa["expertise_area"] is None:
+            continue
         has_negative_fame = Fame.objects.filter(
             user=user,
             expertise_area=epa["expertise_area"],
@@ -143,7 +145,7 @@ def submit_post(
 
         if has_negative_fame:
             post.published = False
-            break
+            
 
     # T2
     confuser_level = FameLevels.objects.get(name="Confuser")
@@ -151,6 +153,9 @@ def submit_post(
     for epa in _expertise_areas:
         truth_rating = epa["truth_rating"]
         expertise_area = epa["expertise_area"]
+
+        if expertise_area is None:  # ← ADD THIS
+            continue
 
         if truth_rating is None or truth_rating.numeric_value >= 0:
             continue
@@ -166,6 +171,7 @@ def submit_post(
                 Posts.objects.filter(author=user).update(published=False)
                 post.published = False
                 redirect_to_logout = True
+                break
 
         except Fame.DoesNotExist:
             Fame.objects.create(

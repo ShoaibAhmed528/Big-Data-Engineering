@@ -9,6 +9,8 @@ djangorestframework = "*"
 faker = "*"
 termcolor = "*"
 regex = "*"
+scikit-learn = "*"
+matplotlib = "*"
 
 [dev-packages]
 
